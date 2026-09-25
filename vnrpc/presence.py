@@ -78,7 +78,6 @@ class PresenceManager:
         self._reconnect = False
         self._thread: threading.Thread | None = None
 
-    # ---- public API -------------------------------------------------
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
             return
@@ -121,7 +120,6 @@ class PresenceManager:
     def connected(self) -> bool:
         return self._connected
 
-    # ---- worker ---------------------------------------------------
     def _run(self) -> None:
         backoff = 2.0
         while not self._stop.is_set():
