@@ -92,7 +92,6 @@ class Config:
         self._lock = threading.RLock()
         self._playtime_frac: dict[str, float] = {}  # sub-second remainders not yet on disk
 
-    # ---- persistence -----------------------------------------------------
     @classmethod
     def load(cls) -> "Config":
         ensure_dirs()
@@ -201,7 +200,6 @@ class Config:
         except FileNotFoundError:
             pass
 
-    # ---- generic access ------------------------------------------------
     def __getitem__(self, key: str) -> Any:
         return self._data[key]
 
@@ -215,7 +213,6 @@ class Config:
     def data(self) -> dict[str, Any]:
         return self._data
 
-    # ---- per-game overrides ------------------------------------------
     def game_override(self, exe: str) -> dict[str, Any]:
         with self._lock:
             return dict(self._games.get(game_key(exe), {}))
@@ -240,7 +237,6 @@ class Config:
                 self._playtime_frac.pop(key, None)
                 self._delete_game_file(key)
 
-    # ---- playtime ------------------------------------------------
     def get_playtime_seconds(self, key: str) -> int:
         """``key`` is already a normalized :func:`game_key`, not a raw exe name."""
         with self._lock:
