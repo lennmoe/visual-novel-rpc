@@ -46,7 +46,6 @@ class WindowWatcher:
         self._locked_engine: Engine | None = None
         self._last_key: tuple | None = None
 
-    # ---- config ---------------------------------------------------
     def configure(self, *, mode: str, manual_exe: str = "", manual_title_contains: str = "") -> None:
         with self._lock:
             self._mode = mode if mode in ("auto", "manual") else "auto"
@@ -55,7 +54,6 @@ class WindowWatcher:
             self._locked_hwnd = None
             self._locked_engine = None
 
-    # ---- lifecycle ---------------------------------------------
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
             return
@@ -72,12 +70,10 @@ class WindowWatcher:
         """Force an immediate re-evaluation (e.g. after the user picks a window)."""
         self._last_key = None
 
-    # ---- helpers for the UI --------------------------------------
     @staticmethod
     def list_windows() -> list[WindowInfo]:
         return list_top_level_windows()
 
-    # ---- worker ------------------------------------------------
     def _run(self) -> None:
         while not self._stop.is_set():
             try:
