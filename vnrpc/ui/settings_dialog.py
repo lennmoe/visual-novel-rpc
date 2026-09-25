@@ -38,7 +38,6 @@ class SettingsDialog(ctk.CTkToplevel):
         t.secondary_button(bar, "Cancel", self.destroy, width=100).pack(side="right", padx=8)
         self.bind("<Escape>", lambda _e: self.destroy())
 
-    # ---- General ---------------------------------------------
     def _build_general(self, tab) -> None:
         frame = t.scrollable(tab)
         frame.pack(fill="both", expand=True)
@@ -126,7 +125,6 @@ class SettingsDialog(ctk.CTkToplevel):
 
         threading.Thread(target=worker, daemon=True).start()
 
-    # ---- Title rules ---------------------------------------
     def _build_rules(self, frame) -> None:
         t.muted(
             frame,
@@ -169,7 +167,6 @@ class SettingsDialog(ctk.CTkToplevel):
             out.append(rule)
         return out
 
-    # ---- save --------------------------------------------
     def _save(self) -> None:
         try:
             rules = self._parse_rules()
