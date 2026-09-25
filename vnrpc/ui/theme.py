@@ -4,7 +4,6 @@ import customtkinter as ctk
 
 from ..paths import APP_ICON_ICO
 
-# ---- palette ------------------------------------------------------------
 BG = ("#F2F3F5", "#111214")
 SURFACE = ("#FFFFFF", "#1B1C20")        # cards
 SURFACE_ALT = ("#E8E9ED", "#24262B")    # panels inside cards, inputs
@@ -26,7 +25,6 @@ YELLOW_SOFT = ("#FCF1D6", "#3A3120")
 RADIUS = 12
 
 
-# ---- fonts ------------------------------------------------------------
 def font(size: int = 13, weight: str = "normal") -> ctk.CTkFont:
     return ctk.CTkFont(size=size, weight=weight)
 
@@ -35,7 +33,6 @@ def mono(size: int = 12) -> ctk.CTkFont:
     return ctk.CTkFont(family="Consolas", size=size)
 
 
-# ---- buttons ----------------------------------------------------------
 def primary_button(parent, text: str, command=None, **kw) -> ctk.CTkButton:
     kw.setdefault("height", 34)
     return ctk.CTkButton(
@@ -61,7 +58,6 @@ def danger_button(parent, text: str, command=None, **kw) -> ctk.CTkButton:
     )
 
 
-# ---- containers / text --------------------------------------------------
 def card(parent, **kw) -> ctk.CTkFrame:
     kw.setdefault("corner_radius", RADIUS)
     return ctk.CTkFrame(parent, fg_color=SURFACE, border_width=1, border_color=BORDER, **kw)
@@ -137,7 +133,6 @@ def ellipsize(text: str, limit: int) -> str:
     return text if len(text) <= limit else text[: max(0, limit - 1)].rstrip() + "…"
 
 
-# ---- windows ----------------------------------------------------------
 def setup_window(win, *, title: str, geometry: str | None = None, minsize: tuple[int, int] | None = None,
                  resizable: bool = True, modal_for=None) -> None:
     """Common Toplevel setup: title, size, app icon, background, and (optionally)
