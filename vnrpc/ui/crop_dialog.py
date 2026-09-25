@@ -72,7 +72,6 @@ class CropDialog(ctk.CTkToplevel):
 
         self._select_all()
 
-    # ---- geometry -----------------------------------------------
     @staticmethod
     def _fit_scale(size: tuple[int, int], box: tuple[int, int]) -> tuple[float, int, int]:
         w, h = size
@@ -96,7 +95,6 @@ class CropDialog(ctk.CTkToplevel):
         x0, y0, x1, y1 = self._sel
         return x0 <= x <= x1 and y0 <= y <= y1
 
-    # ---- mouse handling --------------------------------------
     def _on_hover(self, event) -> None:
         self.canvas.configure(cursor="fleur" if self._inside_sel(event.x, event.y) else "crosshair")
 
@@ -146,7 +144,6 @@ class CropDialog(ctk.CTkToplevel):
             self._sel = self._prev_sel
             self._draw_sel()
 
-    # ---- drawing -----------------------------------------------
     def _draw_sel(self) -> None:
         self.canvas.delete("sel")
         if not self._sel:
@@ -162,7 +159,6 @@ class CropDialog(ctk.CTkToplevel):
                 cx - HANDLE, cy - HANDLE, cx + HANDLE, cy + HANDLE, fill=t.ACCENT, outline="white", tags="sel"
             )
 
-    # ---- result --------------------------------------------
     def _apply(self) -> None:
         if not self._sel:
             return
