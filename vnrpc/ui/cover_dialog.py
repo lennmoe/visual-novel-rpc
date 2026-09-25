@@ -38,7 +38,6 @@ class CoverDialog(ctk.CTkToplevel):
         self._results: list[VNResult] = []
         self._search_gen = 0
 
-        # ---- privacy ------------------------------------------------
         priv = t.card(self)
         priv.pack(fill="x", padx=16, pady=(16, 0))
         row = ctk.CTkFrame(priv, fg_color="transparent")
@@ -52,7 +51,6 @@ class CoverDialog(ctk.CTkToplevel):
         self.privacy_help = t.muted(priv, _PRIVACY_HELP[self.privacy.get()], size=11)
         self.privacy_help.pack(fill="x", padx=16, pady=(0, 12))
 
-        # ---- cover source tabs ----------------------------------------
         tabs = ctk.CTkTabview(
             self, fg_color=t.SURFACE, border_width=1, border_color=t.BORDER, corner_radius=t.RADIUS,
             segmented_button_fg_color=t.SURFACE_ALT, segmented_button_selected_color=t.ACCENT,
@@ -74,7 +72,6 @@ class CoverDialog(ctk.CTkToplevel):
         self.privacy_help.configure(text=_PRIVACY_HELP.get(value, ""))
         self.engine.set_game_privacy(self.exe, value.lower())
 
-    # ---- VNDB tab -----------------------------------------------
     def _build_vndb(self, initial_query: str) -> None:
         top = ctk.CTkFrame(self.tab_vndb, fg_color="transparent")
         top.pack(fill="x", padx=4, pady=(4, 8))
@@ -203,7 +200,6 @@ class CoverDialog(ctk.CTkToplevel):
 
         CropDialog(self, img, aspect=PREVIEW[0] / PREVIEW[1], on_done=on_done)
 
-    # ---- URL tab -----------------------------------------------
     def _build_url(self) -> None:
         self._url_cropped_path: str | None = None
         wrap = ctk.CTkFrame(self.tab_url, fg_color="transparent")
@@ -279,7 +275,6 @@ class CoverDialog(ctk.CTkToplevel):
         self.engine.apply_cover_url(self.exe, url)
         self.destroy()
 
-    # ---- Local tab -------------------------------------------
     def _build_local(self) -> None:
         wrap = ctk.CTkFrame(self.tab_local, fg_color="transparent")
         wrap.pack(fill="both", expand=True, padx=8, pady=8)
