@@ -71,7 +71,6 @@ class App(ctk.CTk):
         if self.config_data["start_minimized"]:
             self.after(300, self._hide_to_tray)
 
-    # ---- layout ------------------------------------------------
     def _build(self) -> None:
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(2, weight=1)
@@ -150,7 +149,6 @@ class App(ctk.CTk):
 
         info.bind("<Configure>", self._on_info_resize)
 
-        # ---- discord preview ----------------------------------
         preview = t.panel(card)
         preview.grid(row=1, column=0, columnspan=2, sticky="ew", padx=20, pady=(0, 20))
         preview.grid_columnconfigure(1, weight=1)
@@ -220,7 +218,6 @@ class App(ctk.CTk):
         for lbl in (self.preview_name, self.preview_details, self.preview_state):
             lbl.configure(wraplength=lines_wrap)
 
-    # ---- event pump ------------------------------------------
     def _poll_events(self) -> None:
         try:
             while True:
@@ -333,7 +330,6 @@ class App(ctk.CTk):
         stamp = f"{h}:{m:02d}:{s:02d}" if h else f"{m:02d}:{s:02d}"
         self.preview_elapsed.configure(text=f"{stamp} elapsed")
 
-    # ---- cover ---------------------------------------------------
     def _show_cover(self, cover, *, blur: bool) -> None:
         key = (cover.local_path, cover.display_url, blur) if cover is not None else None
         if key == self._cover_key:
@@ -382,7 +378,6 @@ class App(ctk.CTk):
             return  # already obvious from the card
         self.status_line.configure(text=t.ellipsize(msg, 70), text_color=t.MUTED if ok else t.SUBTLE)
 
-    # ---- actions -------------------------------------------
     def _on_mode(self, value: str) -> None:
         self.config_data["detection_mode"] = "auto" if value == "Auto" else "manual"
         self.config_data.save()
@@ -476,7 +471,6 @@ class App(ctk.CTk):
             except Exception:
                 pass
 
-    # ---- tray ---------------------------------------------
     def _start_tray(self) -> None:
         try:
             import pystray
