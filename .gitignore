@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+build/
+dist/
+*.spec.bak
+node_modules/
