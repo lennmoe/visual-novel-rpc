@@ -84,7 +84,6 @@ class VNDBClient:
         self._lock = threading.Lock()
         self._last_call = 0.0
 
-    # ---- low level ----------------------------------------------------
     def _throttle(self) -> None:
         with self._lock:
             wait = _MIN_INTERVAL - (time.monotonic() - self._last_call)
@@ -111,7 +110,6 @@ class VNDBClient:
             return resp.json()
         raise VNDBError("rate limited, giving up")
 
-    # ---- search ------------------------------------------------------
     def search_vn(self, query: str, limit: int = 10, use_cache: bool = True) -> list[VNResult]:
         query = (query or "").strip()
         if not query:
@@ -183,7 +181,6 @@ class VNDBClient:
         results = data.get("results", []) or []
         return VNResult.from_api(results[0]) if results else None
 
-    # ---- cover images ---------------------------------------------
     def cover_path(self, vn_id: str, image_url: str) -> str | None:
         """Download a cover to the on-disk cache and return the local path."""
         if not image_url:
