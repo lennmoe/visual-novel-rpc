@@ -26,7 +26,6 @@ _web_cache: "OrderedDict[str, Image.Image]" = OrderedDict()
 _web_lock = threading.Lock()
 
 
-# ---- building CTkImages ------------------------------------------------
 def load_image(
     path_or_none: str | None, size: tuple[int, int], *, blur: bool = False, radius: int = 0
 ) -> "ctk.CTkImage":
@@ -52,7 +51,6 @@ def make_ctk_image(
     return ctk.CTkImage(light_image=img, dark_image=img, size=size)
 
 
-# ---- remote images -------------------------------------------------
 def fetch_pil(url: str) -> "Image.Image | None":
     """Download (or fetch from the memory/disk cache) an image. Blocking."""
     if not url:
@@ -152,7 +150,6 @@ def _alive(widget) -> bool:
         return False
 
 
-# ---- tray / app icon --------------------------------------------------
 def tray_image(size: int = 64) -> Image.Image:
     """The app's icon (tray icon, window icon, and the source for the .exe icon)."""
     try:
@@ -182,7 +179,6 @@ def _fallback_glyph(size: int) -> Image.Image:
     return img
 
 
-# ---- pixel helpers ---------------------------------------------------
 def _fit(img: Image.Image, size: tuple[int, int]) -> Image.Image:
     target_w, target_h = size
     src_w, src_h = img.size
