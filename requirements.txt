@@ -1,0 +1,6 @@
+customtkinter>=5.2
+pypresence>=4.6
+requests>=2.31
+Pillow>=10.0
+pystray>=0.19
+PyYAML>=6.0
