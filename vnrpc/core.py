@@ -85,7 +85,6 @@ class VNRPCEngine:
         self._playtime_thread: threading.Thread | None = None
         self._playtime_stop = threading.Event()
 
-    # ---- lifecycle ------------------------------------------------
     def start(self) -> None:
         self._apply_watcher_config()
         self.presence.start()
@@ -113,7 +112,6 @@ class VNRPCEngine:
         if not paused:
             self.watcher.poke()
 
-    # ---- config changes coming from the UI --------------------
     def reload_config(self) -> None:
         self._rules = build_rules(self.config.get("title_rules"))
         self.presence.set_client_id(self.config["discord_client_id"])
@@ -130,7 +128,6 @@ class VNRPCEngine:
             manual_title_contains=mt.get("title_contains", ""),
         )
 
-    # ---- snapshot access ------------------------------------
     @property
     def snapshot(self) -> Snapshot:
         with self._lock:
@@ -139,7 +136,6 @@ class VNRPCEngine:
     def list_windows(self):
         return self.watcher.list_windows()
 
-    # ---- core reaction to a window change -----------------------
     def _handle_target(self, target: TargetState | None) -> None:
         if target is None:
             with self._playtime_lock:
@@ -216,7 +212,6 @@ class VNRPCEngine:
         self._on_status("game", True, f"{game_name or target.exe}")
         self._push_presence(snap)
 
-    # ---- helpers -----------------------------------------------
     def _resolve_vn(self, key: str, cleaned: str, override: dict, steam_name: str = "") -> VNResult | None:
         if override.get("vndb_id"):
             # failures are cached too: offline, every retry blocks for up to a minute
@@ -318,7 +313,6 @@ class VNRPCEngine:
             self._snapshot = snap
         self._on_snapshot(snap)
 
-    # ---- playtime bookkeeping ----------------------------------
     def _flush_playtime(self) -> None:
         """Bank whatever time has passed since the last flush for the active game."""
         with self._playtime_lock:
@@ -356,7 +350,6 @@ class VNRPCEngine:
             self._on_snapshot(new_snap)
             self._push_presence(new_snap)
 
-    # ---- actions the UI triggers ------------------------------
     def apply_vn_choice(self, exe: str, vn: VNResult, *, as_cover: bool = True) -> None:
         """User picked a VN in the cover dialog's VNDB tab."""
         fields = {"vndb_id": vn.id, "title": vn.title}
@@ -402,7 +395,6 @@ class VNRPCEngine:
         return self.vndb.search_vn(query, limit=limit)
 
 
-# ---- module helpers ----------------------------------------------
 def _engine_by_name(name: str):
     from .engines import ENGINES
     for eng in ENGINES:
@@ -466,7 +458,6 @@ def _similarity(a: str, b: str) -> float:
     return difflib.SequenceMatcher(None, a, b).ratio()
 
 
-# ---- manual test entry point ---------------------------------------
 def _main() -> None:  # pragma: no cover
     import logging
 
