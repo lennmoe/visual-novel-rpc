@@ -53,7 +53,6 @@ class TitleInfo:
         return not self.section_label
 
 
-# ---- default rule set --------------------------------------------------
 # Order matters: more specific patterns come first.
 DEFAULT_RULES: tuple[Rule, ...] = (
     Rule("prologue", r"\b(prologue|prolog|プロローグ|序章|序幕)\b", "Prologue", "prologue"),
@@ -174,7 +173,6 @@ def parse(title: str, game_name: str = "", rules: list[Rule] | None = None) -> T
     return TitleInfo(rule="none")
 
 
-# ---- helpers ---------------------------------------------------------
 def _loose(text: str) -> str:
     return re.sub(r"[\s\W_]+", "", text or "").lower()
 
