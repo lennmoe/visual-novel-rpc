@@ -5,13 +5,14 @@ import sys
 import threading
 import time
 import webbrowser
+from tkinter import messagebox
 
 import customtkinter as ctk
 from PIL import Image
 
 from .config import Config
 from .core import Snapshot, VNRPCEngine
-from .engines import BLACKLIST_EXE
+from .engines import is_blacklisted
 from .paths import ensure_dirs
 from .presence import Activity
 from .ui import theme as t
@@ -50,10 +51,8 @@ class App(ctk.CTk):
         self._paused = False
         self._last_snapshot = Snapshot()
         self._activity: Activity | None = None
-        self._window_map: dict[str, str] = {}   # "title — exe" -> exe
+        self._window_map: dict[str, str] = {}
         self._dialogs: dict[str, ctk.CTkToplevel] = {}
-        # cover currently shown: (local path, url, blur) and its decoded image,
-        # so a snapshot refresh (every title change / minute) doesn't reload it
         self._cover_key: tuple | None = ("unset",)
         self._cover_pil: Image.Image | None = None
         self._asset_thumb = app_icon_image(THUMB_SIZE[0], radius=8)
@@ -115,7 +114,7 @@ class App(ctk.CTk):
         card = t.card(self)
         card.grid(row=2, column=0, sticky="nsew", padx=20, pady=(0, 12))
         card.grid_columnconfigure(1, weight=1)
-        card.grid_rowconfigure(2, weight=1)  # spacer, absorbs extra height
+        card.grid_rowconfigure(2, weight=1)
 
         self.cover_label = ctk.CTkLabel(card, text="")
         self.cover_label.grid(row=0, column=0, padx=(20, 18), pady=(20, 14), sticky="n")
@@ -132,7 +131,6 @@ class App(ctk.CTk):
         self.sub_label = t.muted(info, "")
         self.sub_label.pack(fill="x", pady=(2, 12))
 
-        # height=1: an empty CTkFrame otherwise reserves its default 200 px
         self.badges = ctk.CTkFrame(info, fg_color="transparent", height=1)
         self.badges.pack(fill="x")
         self.section_badge = t.chip(self.badges, fg_color=t.ACCENT, text_color="white")
@@ -143,6 +141,7 @@ class App(ctk.CTk):
         self.cover_btn = t.secondary_button(self.actions, "Change cover…", self._open_cover, width=140)
         self.cover_btn.pack(side="left")
         self.vndb_btn = t.secondary_button(self.actions, "VNDB page ↗", self._open_vndb, width=120)
+        self.not_vn_btn = t.danger_button(self.actions, "Not a VN", self._blacklist_current, width=90)
 
         self.privacy_note = ctk.CTkLabel(info, text="", anchor="w", justify="left",
                                          font=t.font(12), text_color=t.YELLOW)
@@ -236,6 +235,7 @@ class App(ctk.CTk):
         self.section_badge.pack_forget()
         self.playtime_badge.pack_forget()
         self.vndb_btn.pack_forget()
+        self.not_vn_btn.pack_forget()
         self.privacy_note.pack_forget()
 
         if not snap.detected:
@@ -269,6 +269,7 @@ class App(ctk.CTk):
             self.actions.pack(fill="x", pady=(14, 0))
         if snap.vn:
             self.vndb_btn.pack(side="left", padx=(8, 0))
+        self.not_vn_btn.pack(side="left", padx=(8, 0))
 
         note = {
             "partial": "Privacy: Partial — the current section isn't shared.",
@@ -350,7 +351,7 @@ class App(ctk.CTk):
                 return
         if cover.display_url:
             def done(pil: "Image.Image | None") -> None:
-                if self._cover_key != key:  # a newer cover was requested meanwhile
+                if self._cover_key != key:
                     return
                 self._cover_pil = pil
                 self._apply_cover(blur)
@@ -367,7 +368,6 @@ class App(ctk.CTk):
         elif act.large_image.startswith(("http://", "https://")) and self._cover_pil is not None:
             img = make_ctk_image(self._cover_pil, THUMB_SIZE, radius=8)
         else:
-            # Discord shows the fallback asset from your Discord application
             img = self._asset_thumb
         self.preview_thumb.configure(image=img)
 
@@ -375,7 +375,7 @@ class App(ctk.CTk):
         if kind == "discord":
             self.pill_discord.set_state("ok" if ok else "bad", "Discord")
         elif kind == "game":
-            return  # already obvious from the card
+            return
         self.status_line.configure(text=t.ellipsize(msg, 70), text_color=t.MUTED if ok else t.SUBTLE)
 
     def _on_mode(self, value: str) -> None:
@@ -386,7 +386,7 @@ class App(ctk.CTk):
         if value == "Manual":
             self._refresh_windows()
         if not self._last_snapshot.detected:
-            self._render_snapshot(self._last_snapshot)  # refresh the hint text
+            self._render_snapshot(self._last_snapshot)
 
     def _sync_mode_widgets(self) -> None:
         if self.mode.get() == "Manual":
@@ -401,9 +401,10 @@ class App(ctk.CTk):
     def _refresh_windows(self) -> None:
         wins = self.engine.list_windows()
         self._window_map.clear()
+        blacklist = self.engine.blacklist
         for w in wins:
-            if w.exe.lower() in BLACKLIST_EXE:
-                continue  # Discord, Spotify, browsers, etc. -- never a VN
+            if is_blacklisted(w.exe, blacklist):
+                continue
             label = f"{t.ellipsize(w.title, 40)}  —  {w.exe}"
             self._window_map[label] = w.exe
         self.window_menu.configure(values=list(self._window_map) or [_NO_WINDOWS])
@@ -422,6 +423,16 @@ class App(ctk.CTk):
         self.config_data["detection_mode"] = "manual"
         self.config_data.save()
         self.engine.reload_config()
+
+    def _blacklist_current(self) -> None:
+        exe = self._last_snapshot.exe
+        if not exe or not messagebox.askyesno(
+            "Not a VN", f'Never detect "{exe}" again?\n\n'
+            "It's added to the blacklist (Settings → Blacklist) and hidden from the Library.",
+            parent=self,
+        ):
+            return
+        self.engine.add_to_blacklist(exe)
 
     def _open_vndb(self) -> None:
         vn = self._last_snapshot.vn
@@ -486,7 +497,6 @@ class App(ctk.CTk):
             self._tray = pystray.Icon("vnrpc", tray_image(64), "Visual Novel RPC", menu)
             self._tray.run()
         except Exception:
-            # no tray: hiding the window would leave no way to bring it back
             self._tray = None
             self._tray_failed = True
 
