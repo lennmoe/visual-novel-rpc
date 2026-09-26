@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import threading
 import tkinter as tk
@@ -11,6 +12,7 @@ import customtkinter as ctk
 from .. import autostart
 from ..config import DEFAULTS
 from ..core import VNRPCEngine
+from ..engines import normalize_exe
 from . import theme as t
 
 
@@ -31,6 +33,7 @@ class SettingsDialog(ctk.CTkToplevel):
         tabs.pack(fill="both", expand=True, padx=16, pady=(12, 12))
         self._build_general(tabs.add("General"))
         self._build_rules(tabs.add("Title rules"))
+        self._build_blacklist(tabs.add("Blacklist"))
 
         bar = ctk.CTkFrame(self, fg_color="transparent")
         bar.pack(fill="x", padx=16, pady=(0, 16))
@@ -42,7 +45,6 @@ class SettingsDialog(ctk.CTkToplevel):
         frame = t.scrollable(tab)
         frame.pack(fill="both", expand=True)
 
-        # Discord
         _section(frame, "Discord")
         t.muted(frame, "Application ID", size=12).pack(fill="x", padx=16)
         row = ctk.CTkFrame(frame, fg_color="transparent")
@@ -51,7 +53,7 @@ class SettingsDialog(ctk.CTkToplevel):
         self.client_id.insert(0, str(self.cfg["discord_client_id"]))
         self.client_id.pack(side="left", fill="x", expand=True, padx=(0, 8))
         t.secondary_button(row, "Test", self._test_connection, width=70).pack(side="left")
-        self.test_lbl = t.muted(frame, "", size=11)  # packed once a test has run
+        self.test_lbl = t.muted(frame, "", size=11)
         self._hint_anchor = t.muted(
             frame,
             "Create one at discord.com/developers → New Application, then paste its "
@@ -60,13 +62,11 @@ class SettingsDialog(ctk.CTkToplevel):
         )
         self._hint_anchor.pack(fill="x", padx=16, pady=(6, 4))
 
-        # Presence
         _section(frame, "Presence")
         self.show_elapsed = t.switch(frame, "Show elapsed time", self.cfg["show_elapsed"])
         self.clear_on_close = t.switch(frame, "Clear presence when the VN closes", self.cfg["clear_on_close"])
         self.show_vndb_button = t.switch(frame, 'Add a "View on VNDB" button', self.cfg["show_vndb_button"])
 
-        # Covers & matching
         _section(frame, "Covers & matching")
         self.allow_nsfw = t.switch(
             frame, "Allow NSFW-flagged covers", self.cfg["allow_nsfw_covers"],
@@ -77,7 +77,6 @@ class SettingsDialog(ctk.CTkToplevel):
             hint="Gives much better VNDB matches for games installed through Steam.",
         )
 
-        # App
         _section(frame, "App")
         self.start_minimized = t.switch(frame, "Start minimized to the tray", self.cfg["start_minimized"])
         self.launch_at_startup = t.switch(
@@ -87,7 +86,6 @@ class SettingsDialog(ctk.CTkToplevel):
         if not autostart.supported():
             self.launch_at_startup.configure(state="disabled")
 
-        # Advanced
         _section(frame, "Advanced")
         self.min_interval = _field(frame, "Min. seconds between presence updates",
                                    str(self.cfg["update_min_interval"]), width=70)
@@ -120,7 +118,7 @@ class SettingsDialog(ctk.CTkToplevel):
                     self.test_lbl.configure(text=msg, text_color=t.GREEN if ok else t.RED)
             try:
                 self.after(0, show)
-            except Exception:  # dialog closed meanwhile
+            except Exception:
                 pass
 
         threading.Thread(target=worker, daemon=True).start()
@@ -146,6 +144,35 @@ class SettingsDialog(ctk.CTkToplevel):
         self.rules_text.pack(fill="both", expand=True, padx=12, pady=(0, 12))
         existing = self.cfg.get("title_rules") or []
         self.rules_text.insert("1.0", "\n".join(json.dumps(r, ensure_ascii=False) for r in existing))
+
+    def _build_blacklist(self, frame) -> None:
+        t.muted(
+            frame,
+            "Programs that are never detected as a visual novel, one per line "
+            "(e.g. osu!.exe). Their games are also hidden from the Library. "
+            "Browsers, Discord, Steam, OBS… are always ignored.",
+            size=12, wraplength=500,
+        ).pack(fill="x", padx=12, pady=(10, 8))
+        self.blacklist_text = ctk.CTkTextbox(
+            frame, font=t.mono(12), fg_color=t.SURFACE_ALT, border_color=t.BORDER, border_width=1,
+            corner_radius=8, text_color=t.TEXT, wrap="none",
+        )
+        self.blacklist_text.pack(fill="both", expand=True, padx=12, pady=(0, 12))
+        self.blacklist_text.insert("1.0", "\n".join(str(e) for e in self.cfg.get("blacklist_exe") or []))
+
+    def _parse_blacklist(self) -> list[str]:
+        out: list[str] = []
+        seen: set[str] = set()
+        for line in self.blacklist_text.get("1.0", tk.END).splitlines():
+            name = os.path.basename(line.strip())
+            if not name:
+                continue
+            if not name.lower().endswith(".exe"):
+                name += ".exe"
+            if normalize_exe(name) not in seen:
+                seen.add(normalize_exe(name))
+                out.append(name)
+        return out
 
     def _parse_rules(self) -> list[dict]:
         """Raise ValueError with a line number on anything the engine would reject."""
@@ -188,6 +215,7 @@ class SettingsDialog(ctk.CTkToplevel):
         self.cfg["update_min_interval"] = interval
         self.cfg["default_asset_key"] = self.asset_key.get().strip() or DEFAULTS["default_asset_key"]
         self.cfg["title_rules"] = rules
+        self.cfg["blacklist_exe"] = self._parse_blacklist()
         if autostart.supported():
             try:
                 autostart.set_enabled(bool(self.launch_at_startup.get()))
