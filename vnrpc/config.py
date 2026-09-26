@@ -11,31 +11,28 @@ import yaml
 
 from .paths import CONFIG_FILE, GAMES_DIR, SETTINGS_FILE, ensure_dirs
 
-# The Discord Application ID the app talks to.  This one is carried over from the
-# user's earlier per-VN scripts so Rich Presence works out of the box; it can be
-# replaced in Settings with any application you own.
 DEFAULT_CLIENT_ID = "1466261523889393892"
 
 DEFAULTS: dict[str, Any] = {
     "discord_client_id": DEFAULT_CLIENT_ID,
-    "detection_mode": "auto",          # "auto" | "manual"
-    "manual_target": {                  # used when detection_mode == "manual"
-        "exe": "",                      # exe name, e.g. "SugarStyle.exe"
-        "title_contains": "",           # optional extra filter on the window title
+    "detection_mode": "auto",
+    "manual_target": {
+        "exe": "",
+        "title_contains": "",
     },
     "allow_nsfw_covers": False,
-    "use_steam_names": True,            # prefer the installed Steam app's library name
-    "show_elapsed": True,               # show a running timer in the presence
-    "clear_on_close": True,             # clear presence when the VN window is gone
-    "idle_minutes": 0,                  # >0: clear presence after N min without title change
-    "update_min_interval": 5,           # seconds; Discord tolerates ~5 updates / 20 s (1 / 4 s)
+    "use_steam_names": True,
+    "show_elapsed": True,
+    "clear_on_close": True,
+    "idle_minutes": 0,
+    "update_min_interval": 5,
     "start_minimized": False,
-    "default_asset_key": "vn_cover",    # Discord asset key used when no usable cover URL
-    "show_vndb_button": True,           # add a "View on VNDB" button to the presence
-    "title_rules": [],                 # extra user rules, see title_parser.DEFAULT_RULES
+    "default_asset_key": "vn_cover",
+    "show_vndb_button": True,
+    "title_rules": [],
+    "blacklist_exe": ["osu!.exe", "Medal.exe", "Riot Client.exe"],
 }
 
-# Legacy JSON per-game field -> current YAML field, applied once during migration.
 _LEGACY_GAME_FIELDS = {"custom_name": "title", "exe_path": "path"}
 
 
@@ -53,7 +50,8 @@ def _safe_filename(key: str) -> str:
 
 
 def _merge_defaults(data: dict[str, Any]) -> dict[str, Any]:
-    out = {k: (dict(v) if isinstance(v, dict) else v) for k, v in DEFAULTS.items()}
+    out = {k: (dict(v) if isinstance(v, dict) else list(v) if isinstance(v, list) else v)
+           for k, v in DEFAULTS.items()}
     for key, value in (data or {}).items():
         if isinstance(value, dict) and isinstance(out.get(key), dict):
             out[key].update(value)
@@ -86,11 +84,9 @@ class Config:
     ) -> None:
         self._data = _merge_defaults(data or {})
         self._games: dict[str, dict[str, Any]] = {k: dict(v) for k, v in (games or {}).items()}
-        self._game_filenames: dict[str, str] = dict(game_filenames or {})  # key -> filename stem on disk
-        # games are touched from the UI, the window watcher and the playtime
-        # thread; one re-entrant lock keeps the dicts and files consistent
+        self._game_filenames: dict[str, str] = dict(game_filenames or {})
         self._lock = threading.RLock()
-        self._playtime_frac: dict[str, float] = {}  # sub-second remainders not yet on disk
+        self._playtime_frac: dict[str, float] = {}
 
     @classmethod
     def load(cls) -> "Config":
@@ -124,9 +120,6 @@ class Config:
         cfg = cls(data, games, game_filenames)
         if not CONFIG_FILE.exists():
             cfg.save()
-        # rename any file left over from an older naming scheme (e.g. a title
-        # was just added, or the naming scheme itself changed) to the current
-        # title-based name
         for key, entry in list(cfg._games.items()):
             if cfg._game_filenames.get(key) != cfg._filename_for(key, entry):
                 cfg._save_game_file(key)
@@ -222,6 +215,11 @@ class Config:
         with self._lock:
             return {k: dict(v) for k, v in self._games.items()}
 
+    def known_game_paths(self) -> list[str]:
+        """Saved exe paths of every tracked VN, so they're recognized straight away."""
+        with self._lock:
+            return [e["path"] for e in self._games.values() if isinstance(e.get("path"), str) and e["path"]]
+
     def set_game_override(self, exe: str, **fields: Any) -> None:
         key = game_key(exe)
         with self._lock:
@@ -247,8 +245,6 @@ class Config:
             return
         with self._lock:
             entry = self._games.setdefault(key, {})
-            # carry the fractional part over to the next flush instead of
-            # truncating it away every time (that lost ~1% of all playtime)
             total = self._playtime_frac.get(key, 0.0) + seconds
             whole = int(total)
             self._playtime_frac[key] = total - whole
