@@ -9,10 +9,10 @@ _ROMAN = "IVXLCDM"
 
 @dataclass
 class Rule:
-    name: str                 # rule id, e.g. "chapter"
-    pattern: str              # regex, matched case-insensitively against the remainder
-    label: str                # str.format template using named groups n / label
-    section_type: str         # coarse category exposed to the UI / config
+    name: str
+    pattern: str
+    label: str
+    section_type: str
 
     _compiled: re.Pattern | None = None
 
@@ -23,7 +23,6 @@ class Rule:
         if not m:
             return None
         raw = {k: v for k, v in m.groupdict().items() if v}
-        # allow rules to use alternate capture groups (n/n2, label/label2)
         n_value = raw.get("n") or raw.get("n2") or ""
         label_value = raw.get("label") or raw.get("label2") or ""
         groups: dict[str, Any] = dict(raw)
@@ -43,17 +42,16 @@ class Rule:
 
 @dataclass
 class TitleInfo:
-    section_type: str = ""     # "prologue" | "chapter" | "route" | "ending" | "free" | ""
-    section_label: str = ""    # display string, e.g. "Chapter 4 — Yumiko Route"
-    rule: str = ""             # which rule produced it ("" / "fallback" / "none")
-    matched: str = ""          # the raw substring that matched
+    section_type: str = ""
+    section_label: str = ""
+    rule: str = ""
+    matched: str = ""
 
     @property
     def is_empty(self) -> bool:
         return not self.section_label
 
 
-# Order matters: more specific patterns come first.
 DEFAULT_RULES: tuple[Rule, ...] = (
     Rule("prologue", r"\b(prologue|prolog|プロローグ|序章|序幕)\b", "Prologue", "prologue"),
     Rule("epilogue", r"\b(epilogue|epilog|エピローグ|終章)\b", "Epilogue", "ending"),
@@ -66,7 +64,6 @@ DEFAULT_RULES: tuple[Rule, ...] = (
         "route",
     ),
     Rule(
-        # a route/character name preceding the chapter, e.g. "Kokoro, Chapter 1"
         "chapter_named",
         r"(?P<label>[^,]+?)\s*,\s*(?:chapter|chapitre|chap\.?|ch\.?|episode|épisode|ep\.?|act|acte|scene|"
         r"sc[eè]ne|part|partie|volume|vol\.?)\s*(?P<n>[0-9]{1,3}|[" + _ROMAN + r"]{1,7})\b",
@@ -108,9 +105,9 @@ def build_rules(extra: list[dict[str, Any]] | None) -> list[Rule]:
                 label=item.get("label", "{label}"),
                 section_type=item.get("section_type", "free"),
             )
-            re.compile(rule.pattern)  # reject a broken regex now, not on every title
+            re.compile(rule.pattern)
         except (KeyError, TypeError, AttributeError, re.error):
-            continue  # hand-edited config: skip anything malformed
+            continue
         rules.append(rule)
     rules.extend(DEFAULT_RULES)
     return rules
@@ -128,7 +125,6 @@ def strip_game_name(title: str, game_name: str) -> str:
     """Remove the game name (and common separators) from either end of the title."""
     remainder = title.strip()
     if game_name:
-        # try the full name first, then subtitle-trimmed variants
         variants = [game_name]
         for sep in (":", " - ", "~", "～"):
             if sep in game_name:
@@ -144,9 +140,6 @@ def strip_game_name(title: str, game_name: str) -> str:
                 remainder = remainder[: m.start()] + " " + remainder[m.end():]
                 break
     remainder = re.sub(r"\s{2,}", " ", remainder)
-    # NB: brackets are deliberately not stripped here — they're often real content
-    # (e.g. a trailing "[2/3]" part counter), not leftover punctuation. Genuinely
-    # empty bracket pairs are already cleaned upstream by engines.clean_title.
     return remainder.strip(" -–—|:：·•　")
 
 
@@ -158,7 +151,7 @@ def parse(title: str, game_name: str = "", rules: list[Rule] | None = None) -> T
     rules = rules or list(DEFAULT_RULES)
     remainder = strip_game_name(title, game_name)
     remainder = _VERSION_RE.sub(" ", remainder)
-    remainder = _EMPTY_BRACKETS_RE.sub("", remainder)  # e.g. "[1.05]" -> "[]" once the number is gone
+    remainder = _EMPTY_BRACKETS_RE.sub("", remainder)
     remainder = _squash(remainder).strip(" -–—|:：·•　")
     if not remainder:
         return TitleInfo(rule="none")
@@ -166,8 +159,6 @@ def parse(title: str, game_name: str = "", rules: list[Rule] | None = None) -> T
         info = rule.match(remainder)
         if info and info.section_label:
             return info
-    # nothing structural matched: if there's leftover text distinct from the game
-    # name, surface it verbatim (this is what the user's per-VN scripts did).
     if remainder and _loose(remainder) != _loose(game_name):
         return TitleInfo(section_type="free", section_label=_squash(_titlecase(remainder)), rule="fallback", matched=remainder)
     return TitleInfo(rule="none")

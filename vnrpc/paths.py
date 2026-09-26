@@ -11,17 +11,15 @@ def _appdata_root() -> Path:
 
 
 def _assets_dir() -> Path:
-    # PyInstaller (onefile) unpacks bundled `datas` under sys._MEIPASS at runtime;
-    # in dev, `assets/` just sits next to this package at the repo root.
     if getattr(sys, "frozen", False):
         return Path(getattr(sys, "_MEIPASS")) / "assets"
     return Path(__file__).resolve().parent.parent / "assets"
 
 
 APP_DIR: Path = _appdata_root()
-SETTINGS_FILE: Path = APP_DIR / "settings.json"   # legacy, pre-YAML-split; kept for migration
+SETTINGS_FILE: Path = APP_DIR / "settings.json"
 CONFIG_FILE: Path = APP_DIR / "config.yaml"
-GAMES_DIR: Path = APP_DIR / "games"                # one <key>.yaml per tracked VN
+GAMES_DIR: Path = APP_DIR / "games"
 CACHE_DIR: Path = APP_DIR / "cache"
 VNDB_CACHE_DIR: Path = CACHE_DIR / "vndb"
 COVER_CACHE_DIR: Path = CACHE_DIR / "covers"

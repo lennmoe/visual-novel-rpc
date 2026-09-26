@@ -27,8 +27,6 @@ RATING_CASES = [
     ("Aoi Tori R18版@- The First Three Days [2/3] -", "Aoi Tori - The First Three Days [2/3]"),
     ("Some VN (R-18) - Chapter 2", "Some VN - Chapter 2"),
     ("Some VN [R18+] - Day 3", "Some VN - Day 3"),
-    # real raw title captured from a running CMVS game: GetWindowTextW mangles the
-    # Shift-JIS fullwidth space CMVS wrote (bytes 0x81 0x40) into "\x81" + "@"
     ("Aoi Tori[ver.1.03] R18\x81@- The First Three Days [2/3] -", "Aoi Tori - The First Three Days [2/3]"),
 ]
 

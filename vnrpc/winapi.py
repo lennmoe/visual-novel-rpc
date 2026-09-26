@@ -134,7 +134,7 @@ def list_top_level_windows(include_toolwindows: bool = False) -> list[WindowInfo
         if not _IsWindowVisible(hwnd):
             return True
         if _GetWindow(hwnd, GW_OWNER):
-            return True  # owned windows (dialogs) -> skip
+            return True
         if not include_toolwindows:
             ex_style = _GetWindowLongW(hwnd, GWL_EXSTYLE)
             if ex_style & WS_EX_TOOLWINDOW:

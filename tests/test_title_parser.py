@@ -8,7 +8,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from vnrpc.title_parser import parse  # noqa: E402
 
 CASES = [
-    # (window title, game name, expected section_type, expected section_label)
     ("Sugar*Style - prologue01", "Sugar*Style", "free", "Prologue01"),
     ("Grisaia no Kajitsu - Yumiko Route - Chapter 4", "Grisaia no Kajitsu", "route", "Yumiko Route"),
     ("Katawa Shoujo - Act 1", "Katawa Shoujo", "chapter", "Chapter 1"),

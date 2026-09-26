@@ -10,7 +10,7 @@ from . import theme as t
 
 CANVAS_MAX = (460, 460)
 HANDLE = 5
-MIN_SIZE = 12  # px on screen; smaller drags are treated as a stray click
+MIN_SIZE = 12
 _CANVAS_BG = "#0B0C0E"
 
 
@@ -41,7 +41,6 @@ class CropDialog(ctk.CTkToplevel):
         self._scale, disp_w, disp_h = self._fit_scale(self._src.size, CANVAS_MAX)
         self._disp_size = (disp_w, disp_h)
         self._disp_img = self._src.resize((disp_w, disp_h), Image.LANCZOS)
-        # the whole image is drawn dimmed; the selection is redrawn at full brightness on top
         self._photo = ImageTk.PhotoImage(ImageEnhance.Brightness(self._disp_img).enhance(0.35))
         self._sel_photo: ImageTk.PhotoImage | None = None
 
@@ -127,7 +126,6 @@ class CropDialog(ctk.CTkToplevel):
                 width = height * self._aspect
             sx = 1 if dx >= 0 else -1
             sy = 1 if dy >= 0 else -1
-            # clamp while keeping the ratio (clamping x and y separately broke it)
             max_w = x0 if sx < 0 else w - x0
             max_h = y0 if sy < 0 else h - y0
             k = min(1.0, max_w / width if width else 1.0, max_h / height if height else 1.0)
@@ -140,7 +138,6 @@ class CropDialog(ctk.CTkToplevel):
         self._drag_start = None
         self._moving = False
         if self._sel and (self._sel[2] - self._sel[0] < MIN_SIZE or self._sel[3] - self._sel[1] < MIN_SIZE):
-            # a click (or a tiny drag) shouldn't throw away the current selection
             self._sel = self._prev_sel
             self._draw_sel()
 
@@ -177,7 +174,6 @@ class CropDialog(ctk.CTkToplevel):
         if self._finished:
             return
         self._finished = True
-        # close first: the callback may destroy our parent (and us with it)
         on_done = self._on_done
         self.destroy()
         on_done(result)

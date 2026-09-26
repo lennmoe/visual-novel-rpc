@@ -5,8 +5,8 @@ import customtkinter as ctk
 from ..paths import APP_ICON_ICO
 
 BG = ("#F2F3F5", "#111214")
-SURFACE = ("#FFFFFF", "#1B1C20")        # cards
-SURFACE_ALT = ("#E8E9ED", "#24262B")    # panels inside cards, inputs
+SURFACE = ("#FFFFFF", "#1B1C20")
+SURFACE_ALT = ("#E8E9ED", "#24262B")
 SURFACE_HOVER = ("#DCDEE3", "#2E3036")
 BORDER = ("#D6D8DD", "#2B2D33")
 TEXT = ("#1E1F22", "#F2F3F5")
@@ -15,7 +15,7 @@ SUBTLE = ("#80848E", "#6F737C")
 
 ACCENT = "#5865F2"
 ACCENT_HOVER = "#4752C4"
-ACCENT_SOFT = ("#E3E5FD", "#2A2D52")    # tinted background for accent chips
+ACCENT_SOFT = ("#E3E5FD", "#2A2D52")
 GREEN = "#23A55A"
 RED = "#F23F43"
 RED_HOVER = "#C9302F"
@@ -138,7 +138,7 @@ def setup_window(win, *, title: str, geometry: str | None = None, minsize: tuple
     """Common Toplevel setup: title, size, app icon, background, and (optionally)
     modal to ``modal_for``."""
     win.title(title)
-    if geometry:  # None: size to content
+    if geometry:
         win.geometry(geometry)
     if minsize:
         win.minsize(*minsize)
@@ -147,13 +147,10 @@ def setup_window(win, *, title: str, geometry: str | None = None, minsize: tuple
     set_icon(win)
     if modal_for is not None:
         win.transient(modal_for)
-        # grab_set fails if the window isn't viewable yet; retry briefly
         win.after(80, lambda: _safe_grab(win))
 
 
 def set_icon(win) -> None:
-    # NB: iconbitmap(), not iconphoto(): CTk windows overwrite the icon ~200 ms
-    # after creation with CustomTkinter's own, unless iconbitmap() was called.
     if APP_ICON_ICO.exists():
         try:
             win.iconbitmap(str(APP_ICON_ICO))

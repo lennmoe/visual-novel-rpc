@@ -5,7 +5,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Callable
 
-try:  # pypresence is optional at import time so tests can stub it
+try:
     from pypresence import Presence
     from pypresence.exceptions import PyPresenceException
 except Exception:  # pragma: no cover
@@ -17,15 +17,14 @@ except Exception:  # pragma: no cover
 
 @dataclass
 class Activity:
-    name: str = ""                    # activity name override -> the bold header
-                                      # line (otherwise Discord shows the app name)
-    details: str = ""                 # first line under the header (section)
-    state: str = ""                   # second line (extra detail, usually unused)
-    large_image: str = ""             # http(s) URL or a Discord asset key
+    name: str = ""
+    details: str = ""
+    state: str = ""
+    large_image: str = ""
     large_text: str = ""
     small_image: str = ""
     small_text: str = ""
-    start: int | None = None          # epoch seconds -> "elapsed" timer
+    start: int | None = None
     buttons: list[dict[str, str]] = field(default_factory=list)
 
     def to_kwargs(self) -> dict:
@@ -98,8 +97,6 @@ class PresenceManager:
             if client_id == self._client_id:
                 return
             self._client_id = client_id
-            # the worker thread owns the connection: ask it to reconnect rather
-            # than closing the socket under it from this (UI) thread
             self._reconnect = True
         self._dirty.set()
 
@@ -134,7 +131,7 @@ class PresenceManager:
                 self._teardown()
 
             if not self._ensure_connected():
-                self._stop.wait(backoff)  # interruptible, so quitting stays snappy
+                self._stop.wait(backoff)
                 backoff = min(backoff * 1.7, 30.0)
                 continue
             backoff = 2.0
@@ -154,7 +151,6 @@ class PresenceManager:
                     continue
                 wait = self._min_interval - (time.monotonic() - self._last_push)
                 if wait > 0:
-                    # come back when the rate-limit window is open
                     self._dirty.set()
                     self._stop.wait(min(wait, self._min_interval))
                     continue

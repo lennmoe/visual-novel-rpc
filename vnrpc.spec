@@ -1,8 +1,7 @@
-# PyInstaller spec — build with:  python -m PyInstaller vnrpc.spec  (or: python build.py)
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 datas = []
-datas += collect_data_files("customtkinter")          # theme .json + assets
+datas += collect_data_files("customtkinter")
 datas += [("assets/vnrpc.ico", "assets"), ("assets/app_icon.png", "assets")]
 
 hiddenimports = []
@@ -35,7 +34,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,               # GUI app: no console window
+    console=False,
     disable_windowed_traceback=False,
     icon="assets/vnrpc.ico",
     version=None,

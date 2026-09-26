@@ -106,14 +106,14 @@ class CoverDialog(ctk.CTkToplevel):
                 results, err = [], str(exc)
             try:
                 self.after(0, lambda: self._show_results(gen, results, err))
-            except Exception:  # dialog closed meanwhile
+            except Exception:
                 pass
 
         threading.Thread(target=worker, daemon=True).start()
 
     def _show_results(self, gen: int, results: list[VNResult], err: str) -> None:
         if gen != self._search_gen or not self.winfo_exists():
-            return  # superseded by a newer search
+            return
         self._results = results
         if err:
             self.vndb_status.configure(text=f"Search failed: {err}", text_color=t.RED)

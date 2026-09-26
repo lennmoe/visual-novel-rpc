@@ -137,7 +137,7 @@ def _run_async(url: str, deliver: Callable[["Image.Image | None"], None], widget
             return
         try:
             widget.after(0, lambda: deliver(pil))
-        except Exception:  # widget/app already gone
+        except Exception:
             pass
 
     threading.Thread(target=worker, daemon=True).start()
@@ -171,7 +171,6 @@ def _fallback_glyph(size: int) -> Image.Image:
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     d.rounded_rectangle([2, 2, size - 3, size - 3], radius=size // 6, fill=(88, 101, 242, 255))
-    # a simple open-book glyph
     m = size // 2
     d.line([m, size * 0.28, m, size * 0.74], fill=(255, 255, 255, 255), width=max(2, size // 20))
     d.arc([size * 0.16, size * 0.28, m, size * 0.78], 300, 60, fill=(255, 255, 255, 255), width=max(2, size // 20))
@@ -190,13 +189,12 @@ def _fit(img: Image.Image, size: tuple[int, int]) -> Image.Image:
 
 
 def _round(img: Image.Image, radius: int) -> Image.Image:
-    # draw the mask at 4x and shrink it for smooth (anti-aliased) corners
     w, h = img.size
     big = Image.new("L", (w * 4, h * 4), 0)
     ImageDraw.Draw(big).rounded_rectangle([0, 0, w * 4 - 1, h * 4 - 1], radius=radius * 4, fill=255)
     mask = big.resize((w, h), Image.LANCZOS)
     out = img.convert("RGBA")
-    out.putalpha(ImageChops.multiply(out.getchannel("A"), mask))  # keep existing transparency
+    out.putalpha(ImageChops.multiply(out.getchannel("A"), mask))
     return out
 
 
@@ -204,10 +202,9 @@ def _placeholder(size: tuple[int, int]) -> Image.Image:
     w, h = size
     img = Image.new("RGB", size, _PLACEHOLDER_BOTTOM)
     d = ImageDraw.Draw(img)
-    for y in range(h):  # soft vertical gradient
+    for y in range(h):
         t = y / max(1, h - 1)
         d.line([0, y, w, y], fill=tuple(round(a + (b - a) * t) for a, b in zip(_PLACEHOLDER_TOP, _PLACEHOLDER_BOTTOM)))
-    # an open book, centred
     s = min(w, h) * 0.36
     cx, cy = w / 2, h / 2
     lw = max(1, round(min(w, h) / 50))

@@ -13,7 +13,7 @@ from .paths import COVER_CACHE_DIR, VNDB_CACHE_DIR, ensure_dirs
 
 API_BASE = "https://api.vndb.org/kana"
 USER_AGENT = "VisualNovelRPC/1.0 (+https://github.com/; local desktop app)"
-_MIN_INTERVAL = 1.1  # seconds between requests
+_MIN_INTERVAL = 1.1
 
 _QUERY_FIELDS = (
     "id,title,alttitle,released,rating,"
@@ -23,14 +23,14 @@ _QUERY_FIELDS = (
 
 @dataclass
 class VNResult:
-    id: str                     # e.g. "v17"
+    id: str
     title: str
     alt_title: str = ""
     year: str = ""
     image_url: str = ""
-    sexual: float = 0.0         # 0..2, VNDB flagging of the cover image
-    violence: float = 0.0       # 0..2
-    rating: float = 0.0         # VNDB's Bayesian rating, 1..10 (0 if unknown)
+    sexual: float = 0.0
+    violence: float = 0.0
+    rating: float = 0.0
     _extra: dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -61,7 +61,7 @@ class VNResult:
 class ReleaseCover:
     """One box-art image from one of a VN's releases (front/back/side/etc.)."""
     url: str
-    type: str                   # "pkgfront" | "pkgback" | "pkgside" | "pkgmed" | "dig"
+    type: str
     release_id: str
     release_title: str
     sexual: float = 0.0

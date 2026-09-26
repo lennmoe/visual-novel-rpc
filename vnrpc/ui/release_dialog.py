@@ -68,7 +68,7 @@ class ReleaseCoverDialog(ctk.CTkToplevel):
             covers, err = [], str(exc)
         try:
             self.after(0, lambda: self._show(covers, err))
-        except Exception:  # dialog closed meanwhile
+        except Exception:
             pass
 
     def _status_text(self) -> str:
@@ -125,7 +125,6 @@ class ReleaseCoverDialog(ctk.CTkToplevel):
         self._finish()
 
     def _finish(self) -> None:
-        # close ourselves first: on_picked usually destroys our parent dialog
         on_picked = self.on_picked
         self.destroy()
         if on_picked:

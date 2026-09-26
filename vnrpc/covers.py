@@ -15,13 +15,13 @@ _IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
 
 @dataclass
 class Cover:
-    source: str = "none"      # "vndb" | "url" | "local" | "none"
-    value: str = ""           # vn id, url, or file path
-    local_path: str | None = None   # a file on disk to show in the UI (if any)
-    discord_image: str = ""   # what to hand pypresence as large_image
-    display_url: str = ""     # http(s) URL when we have one
+    source: str = "none"
+    value: str = ""
+    local_path: str | None = None
+    discord_image: str = ""
+    display_url: str = ""
     nsfw: bool = False
-    label: str = ""           # tooltip / large_text
+    label: str = ""
 
     @property
     def is_empty(self) -> bool:
@@ -77,7 +77,7 @@ def resolve_cover(
             source="local",
             value=stored or value,
             local_path=stored or value,
-            discord_image=default_asset_key,   # Discord can't show a local file
+            discord_image=default_asset_key,
             display_url="",
             label=label,
         )
