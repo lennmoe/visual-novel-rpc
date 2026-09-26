@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import os
-from tkinter import messagebox
+from tkinter import filedialog, messagebox
 
 import customtkinter as ctk
 
 from ..core import VNRPCEngine, format_playtime
 from ..covers import cached_cover_for_entry
+from ..engines import is_blacklisted
 from . import theme as t
 from .images import load_image
 
@@ -38,7 +39,11 @@ class LibraryDialog(ctk.CTkToplevel):
         for w in self.list_box.winfo_children():
             w.destroy()
 
-        games = self.engine.config.all_games()
+        blacklist = self.engine.blacklist
+        games = {
+            key: entry for key, entry in self.engine.config.all_games().items()
+            if not is_blacklisted(entry.get("path") or key, blacklist)
+        }
         total = sum(int(e.get("playtime_seconds", 0)) for e in games.values())
         count = len(games)
         self.summary.configure(
@@ -88,27 +93,38 @@ class LibraryDialog(ctk.CTkToplevel):
         btns = ctk.CTkFrame(row, fg_color="transparent")
         btns.grid(row=0, column=2, rowspan=3, padx=12)
         exe_path = entry.get("path", "")
-        play = t.primary_button(btns, "▶  Play", lambda p=exe_path: self._launch(p), width=86)
-        play.pack(side="left")
-        if not exe_path:
-            play.configure(state="disabled", fg_color=t.SURFACE_ALT, text_color_disabled=t.SUBTLE)
+        if exe_path:
+            t.primary_button(btns, "▶  Play", lambda k=key, p=exe_path: self._launch(k, p), width=86).pack(
+                side="left"
+            )
+        else:
+            t.secondary_button(btns, "Locate…", lambda k=key: self._locate(k), width=86).pack(side="left")
         t.danger_button(btns, "Remove", lambda k=key, n=name: self._remove(k, n), width=80).pack(
             side="left", padx=(8, 0)
         )
 
-    def _launch(self, exe_path: str) -> None:
-        if not exe_path or not os.path.isfile(exe_path):
-            messagebox.showerror(
+    def _launch(self, key: str, exe_path: str) -> None:
+        if not os.path.isfile(exe_path):
+            if messagebox.askyesno(
                 "Play", "This game's executable can't be found anymore\n"
-                "(it may have moved or been uninstalled).", parent=self,
-            )
+                "(it may have moved or been uninstalled).\n\nLocate it?", parent=self,
+            ):
+                self._locate(key)
             return
         try:
-            # many engines load their data relative to the working directory,
-            # so start the game from its own folder
             os.startfile(exe_path, cwd=os.path.dirname(exe_path))
         except OSError as exc:
             messagebox.showerror("Play", f"Couldn't launch it: {exc}", parent=self)
+
+    def _locate(self, key: str) -> None:
+        path = filedialog.askopenfilename(
+            parent=self, title="Locate the game's executable",
+            filetypes=[("Programs", "*.exe"), ("All files", "*.*")],
+        )
+        if not path:
+            return
+        self.engine.set_game_path(key, os.path.normpath(path))
+        self._reload()
 
     def _remove(self, key: str, name: str) -> None:
         if not messagebox.askyesno(
