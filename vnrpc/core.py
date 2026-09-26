@@ -10,7 +10,7 @@ from typing import Callable
 from . import steam
 from .config import Config, game_key
 from .covers import Cover, cover_from_vn, resolve_cover
-from .engines import clean_title
+from .engines import blacklist_set, clean_title, normalize_exe
 from .presence import Activity, PresenceManager
 from .title_parser import Rule, build_rules, parse, strip_game_name
 from .vndb import ReleaseCover, VNDBClient, VNResult
@@ -18,7 +18,7 @@ from .window_watcher import TargetState, WindowWatcher
 
 _SECTION_TAIL = re.compile(r"\s*[-–—~～:|].*$")
 
-_PLAYTIME_FLUSH_INTERVAL = 60.0  # seconds between "still playing" saves to disk
+_PLAYTIME_FLUSH_INTERVAL = 60.0
 
 
 def format_playtime(seconds: int) -> str:
@@ -40,13 +40,13 @@ class Snapshot:
     section_label: str = ""
     cover: Cover = field(default_factory=Cover)
     vn: VNResult | None = None
-    vndb_locked: bool = False       # game/cover pinned by a per-game override
-    presence_text: str = ""         # one-line preview of what Discord shows
-    steam_name: str = ""            # name from the matching installed Steam app, if any
-    privacy: str = "full"           # "full" | "partial" | "private" | "off"
-    playtime_seconds: int = 0       # total time ever spent on this game (persisted)
-    playtime_text: str = ""         # "44h 42m", ready to display
-    session_start: int = 0          # epoch seconds this play session began
+    vndb_locked: bool = False
+    presence_text: str = ""
+    steam_name: str = ""
+    privacy: str = "full"
+    playtime_seconds: int = 0
+    playtime_text: str = ""
+    session_start: int = 0
 
 
 class VNRPCEngine:
@@ -77,8 +77,6 @@ class VNRPCEngine:
         self._rules: list[Rule] = build_rules(config.get("title_rules"))
         self._paused = False
 
-        # playtime: `_playtime_key` is the game currently accruing time;
-        # `_playtime_tick_start` is when the current unsaved stretch began.
         self._playtime_key = ""
         self._playtime_tick_start = 0.0
         self._playtime_lock = threading.Lock()
@@ -104,9 +102,9 @@ class VNRPCEngine:
     def set_paused(self, paused: bool) -> None:
         with self._playtime_lock:
             if paused:
-                self._flush_playtime_locked()   # bank time played up to the pause
+                self._flush_playtime_locked()
             else:
-                self._playtime_tick_start = time.time()  # resume counting from now
+                self._playtime_tick_start = time.time()
             self._paused = paused
         self.presence.set_paused(paused)
         if not paused:
@@ -126,7 +124,14 @@ class VNRPCEngine:
             mode=self.config["detection_mode"],
             manual_exe=mt.get("exe", ""),
             manual_title_contains=mt.get("title_contains", ""),
+            blacklist=self.blacklist,
         )
+        self.watcher.set_known_paths(self.config.known_game_paths())
+
+    @property
+    def blacklist(self) -> frozenset[str]:
+        """Built-in + user-blacklisted exe names, normalized (``"medal.exe"``)."""
+        return blacklist_set(self.config.get("blacklist_exe"))
 
     @property
     def snapshot(self) -> Snapshot:
@@ -152,7 +157,7 @@ class VNRPCEngine:
         key = game_key(target.exe)
         if key != self._current_key:
             with self._playtime_lock:
-                self._flush_playtime_locked()  # bank whatever the previous game accrued
+                self._flush_playtime_locked()
                 self._playtime_key = key
                 self._playtime_tick_start = time.time()
             self._current_key = key
@@ -160,9 +165,9 @@ class VNRPCEngine:
 
         override = self.config.game_override(target.exe)
         if target.exe_path and override.get("path") != target.exe_path:
-            # remembered so the Library can relaunch this VN later
             self.config.set_game_override(target.exe, path=target.exe_path)
             override = self.config.game_override(target.exe)
+            self.watcher.set_known_paths(self.config.known_game_paths())
         cleaned = clean_title(target.raw_title, None) if not target.engine_name else clean_title(
             target.raw_title, _engine_by_name(target.engine_name)
         )
@@ -214,7 +219,6 @@ class VNRPCEngine:
 
     def _resolve_vn(self, key: str, cleaned: str, override: dict, steam_name: str = "") -> VNResult | None:
         if override.get("vndb_id"):
-            # failures are cached too: offline, every retry blocks for up to a minute
             cache_key = "id:" + override["vndb_id"]
             if cache_key in self._auto_match:
                 return self._auto_match[cache_key]
@@ -226,17 +230,15 @@ class VNRPCEngine:
             self._auto_match[cache_key] = vn
             return vn
         if override.get("cover_source") in ("url", "local", "none"):
-            return None  # user chose a non-VNDB cover; don't auto-search
+            return None
         if key in self._auto_match:
             return self._auto_match[key]
-        # one auto search per game per session; a Steam library name is a much
-        # cleaner query than whatever the window title happens to say
         query = steam_name or _search_query(cleaned)
         vn = None
         try:
             results = self.vndb.search_vn(query, limit=8)
             vn = _best_vn_match(results, query)
-        except Exception as exc:  # network/parse issues shouldn't break detection
+        except Exception as exc:
             self._on_status("vndb", False, f"VNDB lookup failed: {exc}")
         self._auto_match[key] = vn
         return vn
@@ -319,7 +321,6 @@ class VNRPCEngine:
             self._flush_playtime_locked()
 
     def _flush_playtime_locked(self) -> None:
-        # time spent paused was already banked at pause time, and isn't reading time
         if self._paused or not self._playtime_key or self._playtime_tick_start <= 0:
             return
         now = time.time()
@@ -342,8 +343,6 @@ class VNRPCEngine:
             total = self.config.get_playtime_seconds(game_key(snap.exe))
             new_snap = replace(snap, playtime_seconds=total, playtime_text=format_playtime(total))
             with self._lock:
-                # the watcher may have stored a newer snapshot (title change, other
-                # game) meanwhile -- never overwrite that with this stale copy
                 if self._snapshot is not snap:
                     continue
                 self._snapshot = new_snap
@@ -378,6 +377,20 @@ class VNRPCEngine:
 
     def set_game_privacy(self, exe: str, mode: str) -> None:
         self.config.set_game_override(exe, privacy=mode)
+        self.reload_config()
+
+    def set_game_path(self, exe: str, path: str) -> None:
+        """User located a Library VN's exe by hand (it was never saved, or moved)."""
+        self.config.set_game_override(exe, path=path)
+        self.reload_config()
+
+    def add_to_blacklist(self, exe: str) -> None:
+        """Never detect ``exe`` again (the main window's "Not a VN" button)."""
+        entries = list(self.config.get("blacklist_exe") or [])
+        if normalize_exe(exe) not in {normalize_exe(e) for e in entries}:
+            entries.append(exe)
+            self.config["blacklist_exe"] = entries
+            self.config.save()
         self.reload_config()
 
     def clear_override(self, exe: str) -> None:
